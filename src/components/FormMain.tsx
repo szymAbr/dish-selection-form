@@ -1,33 +1,22 @@
 import { Form, Field } from "react-final-form";
 import Box from "@mui/material/Box";
-import TextField from "@mui/material/TextField";
-import Select from "@mui/material/Select";
 import Button from "@mui/material/Button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-// const TextFieldStyled = styled(TextField)`
-//   background-color: red;
-// `
-
-const sleep = (ms: any) => new Promise((resolve) => setTimeout(resolve, ms));
+import { TextFieldElement } from "./styles/TextFieldElement.styled";
+import { Select } from "./styles/Select.styled";
+import { Buttons } from "./styles/Buttons.styled";
+import FormFieldNumber from "./FormFieldNumber";
 
 const onSubmit = async (values: any) => {
-  await sleep(300);
-  window.alert(JSON.stringify(values));
+  // await sleep(300);
+  // window.alert(JSON.stringify(values));
+  alert("submitted!");
 };
 
-const required = (value: any) => (value ? undefined : "Required");
-// const mustBeNumber = (value: any) =>
-//   isNaN(value) ? "Must be a number" : undefined;
-// const minValue = (min: any) => (value: any) =>
-//   isNaN(value) || value >= min ? undefined : `Should be greater than ${min}`;
-// const composeValidators =
-//   (...validators: any) =>
-//   (value: any) =>
-//     validators.reduce(
-//       (error: any, validator: any) => error || validator(value),
-//       undefined
-//     );
+interface Errors {
+  [key: string]: string;
+}
 
 export default function FormMain() {
   const [formData, setFormData] = useState({
@@ -45,61 +34,101 @@ export default function FormMain() {
       slicesOfBread: 0,
     },
   });
+  const [options, setOptions] = useState<string[]>([]);
+
+  // update options on dishType change
+  useEffect(() => {
+    type StateKey = keyof typeof formData;
+
+    const key = formData.dishType as StateKey;
+
+    if (formData.dishType) setOptions(Object.keys(formData[key]));
+  }, [formData, formData.dishType]);
 
   return (
     <Box>
       <Form
         onSubmit={onSubmit}
+        validate={(values) => {
+          const errors: Errors = {};
+          if (!values.dishName) errors.dishName = "Required";
+          if (!values.preparationTime) errors.preparationTime = "Required";
+          if (!formData.dishType) errors.dishType = "Required";
+          if (!values.numberOfSlices) errors.numberOfSlices = "Required";
+
+          options.forEach((option) => {
+            if (!values[option]) errors[option] = "Required";
+          });
+
+          // else if (values.confirm !== values.password) {
+          //   errors.confirm = "Must match";
+          // }
+          return errors;
+        }}
         render={({ handleSubmit, form, submitting, pristine, values }) => (
           <form onSubmit={handleSubmit}>
-            <Field name="dishName" validate={required}>
+            <Field name="dishName">
               {({ input, meta }) => (
                 <div>
-                  <TextField {...input} type="text" label="Dish name" />
+                  <TextFieldElement {...input} type="text" label="Dish name" />
+
+                  <br />
+
                   {meta.error && meta.touched && <span>{meta.error}</span>}
                 </div>
               )}
             </Field>
 
-            <Field name="preparationTime" validate={required}>
+            <Field name="preparationTime">
               {({ input, meta }) => (
                 <div>
-                  <TextField {...input} type="text" label="Preparation time" />
+                  <TextFieldElement
+                    {...input}
+                    type="text"
+                    label="Preparation time"
+                  />
+
+                  <br />
+
                   {meta.error && meta.touched && <span>{meta.error}</span>}
                 </div>
               )}
             </Field>
 
-            <Field name="dishType" component="select" validate={required}>
+            <Field name="dishType" component="select">
               {({ input, meta }) => (
                 <div>
-                  <select {...input}>
-                    <option />
+                  <Select
+                    {...input}
+                    value={formData.dishType}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dishType: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">---</option>
 
                     <option value="pizza">Pizza</option>
 
                     <option value="soup">Soup</option>
 
                     <option value="sandwich">Sandwich</option>
-                  </select>
+                  </Select>
+
+                  <br />
+
                   {meta.error && meta.touched && <span>{meta.error}</span>}
                 </div>
               )}
             </Field>
 
-            {/* <Field
-              name="age"
-              validate={composeValidators(required, mustBeNumber, minValue(18))}
-            >
-              {({ input, meta }) => (
-                <div>
-                  <TextField {...input} type="text" label="Dish type" />
-                  {meta.error && meta.touched && <span>{meta.error}</span>}
-                </div>
-              )}
-            </Field> */}
+            {options ? (
+              <FormFieldNumber formData={formData} options={options} />
+            ) : null}
 
-            <div className="buttons">
+            <Buttons className="buttons">
               <Button
                 variant="contained"
                 color="success"
@@ -118,7 +147,7 @@ export default function FormMain() {
               >
                 Reset
               </Button>
-            </div>
+            </Buttons>
 
             <pre>{JSON.stringify(values)}</pre>
           </form>
