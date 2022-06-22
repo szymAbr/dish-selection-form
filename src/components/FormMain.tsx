@@ -1,73 +1,72 @@
 import { Form, Field } from "react-final-form";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import { useEffect, useState } from "react";
+import { ReactNode } from "react";
+import axios from "axios";
 
 import { TextFieldElement } from "./styles/TextFieldElement.styled";
 import { Select } from "./styles/Select.styled";
 import { Buttons } from "./styles/Buttons.styled";
-import FormFieldNumber from "./FormFieldNumber";
 
-const onSubmit = async (values: any) => {
-  // await sleep(300);
-  // window.alert(JSON.stringify(values));
-  alert("submitted!");
-};
+type Validator = (value: string) => string;
 
-interface Errors {
-  [key: string]: string;
+interface ConditionTypes {
+  when: string;
+  is: string;
+  children: ReactNode;
 }
 
+// return value type set to "any" to bypass the type
+// expected by Field's property "parse"
+const parse = (value: string): any =>
+  isNaN(parseFloat(value)) ? "" : parseFloat(value);
+const required = (value: string) =>
+  !value || value === "default" ? "Required" : "";
+const timeFormat = (value: string) =>
+  value[2] === ":" && value[5] === ":" && value.length === 8
+    ? ""
+    : "Incorrect format";
+const composeValidators =
+  (...validators: Validator[]) =>
+  (value: string) =>
+    validators.reduce(
+      (error: string, validator) => error || validator(value),
+      ""
+    );
+
+const Condition = ({ when, is, children }: ConditionTypes) => (
+  <Field name={when} subscription={{ value: true }}>
+    {({ input: { value } }) => (value === is ? children : null)}
+  </Field>
+);
+
 export default function FormMain() {
-  const [formData, setFormData] = useState({
-    dishName: "",
-    preparationTime: "",
-    dishType: "",
-    pizza: {
-      numberOfSlices: 0, // number
-      diameter: 0, // floating point
-    },
-    soup: {
-      spicinessScale: 0,
-    },
-    sandwich: {
-      slicesOfBread: 0,
-    },
-  });
-  const [options, setOptions] = useState<string[]>([]);
+  function onSubmit(values: any): void {
+    console.log("values", values);
+    async function postData() {
+      try {
+        const response = await axios.post(
+          "https://frosty-wood-6558.getsandbox.com:443/dishes",
+          values
+        );
 
-  // update options on dishType change
-  useEffect(() => {
-    type StateKey = keyof typeof formData;
+        console.log(response.data);
+      } catch (error: any) {
+        console.log(error);
+      }
+    }
 
-    const key = formData.dishType as StateKey;
-
-    if (formData.dishType) setOptions(Object.keys(formData[key]));
-  }, [formData, formData.dishType]);
+    postData();
+  }
 
   return (
     <Box>
       <Form
         onSubmit={onSubmit}
-        validate={(values) => {
-          const errors: Errors = {};
-          if (!values.dishName) errors.dishName = "Required";
-          if (!values.preparationTime) errors.preparationTime = "Required";
-          if (!formData.dishType) errors.dishType = "Required";
-          if (!values.numberOfSlices) errors.numberOfSlices = "Required";
-
-          options.forEach((option) => {
-            if (!values[option]) errors[option] = "Required";
-          });
-
-          // else if (values.confirm !== values.password) {
-          //   errors.confirm = "Must match";
-          // }
-          return errors;
-        }}
+        subscription={{ submitting: true }}
         render={({ handleSubmit, form, submitting, pristine, values }) => (
           <form onSubmit={handleSubmit}>
-            <Field name="dishName">
+            <Field name="name" validate={required}>
               {({ input, meta }) => (
                 <div>
                   <TextFieldElement {...input} type="text" label="Dish name" />
@@ -79,13 +78,16 @@ export default function FormMain() {
               )}
             </Field>
 
-            <Field name="preparationTime">
+            <Field
+              name="preparation_time"
+              validate={composeValidators(required, timeFormat)}
+            >
               {({ input, meta }) => (
                 <div>
                   <TextFieldElement
                     {...input}
                     type="text"
-                    label="Preparation time"
+                    label="Preparation time [hh:mm:ss]"
                   />
 
                   <br />
@@ -95,20 +97,11 @@ export default function FormMain() {
               )}
             </Field>
 
-            <Field name="dishType" component="select">
+            <Field name="type" component="select" validate={required}>
               {({ input, meta }) => (
                 <div>
-                  <Select
-                    {...input}
-                    value={formData.dishType}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        dishType: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="">---</option>
+                  <Select {...input}>
+                    <option value="default">---</option>
 
                     <option value="pizza">Pizza</option>
 
@@ -124,9 +117,91 @@ export default function FormMain() {
               )}
             </Field>
 
-            {options ? (
-              <FormFieldNumber formData={formData} options={options} />
-            ) : null}
+            <Condition when="type" is="pizza">
+              <Field name="no_of_slices" validate={required} parse={parse}>
+                {({ input, meta }) => (
+                  <div>
+                    <TextFieldElement
+                      {...input}
+                      type="number"
+                      label="Number of slices"
+                      inputProps={{
+                        step: "1",
+                        min: 1,
+                        max: 16,
+                      }}
+                    />
+                    <br />
+
+                    {meta.error && meta.touched && <span>{meta.error}</span>}
+                  </div>
+                )}
+              </Field>
+
+              <Field name="diameter" validate={required} parse={parse}>
+                {({ input, meta }) => (
+                  <div>
+                    <TextFieldElement
+                      {...input}
+                      type="number"
+                      label="Diameter"
+                      inputProps={{
+                        step: "0.1",
+                        min: 15,
+                        max: 60,
+                      }}
+                    />
+                    <br />
+
+                    {meta.error && meta.touched && <span>{meta.error}</span>}
+                  </div>
+                )}
+              </Field>
+            </Condition>
+
+            <Condition when="type" is="soup">
+              <Field name="spiciness_scale" validate={required} parse={parse}>
+                {({ input, meta }) => (
+                  <div>
+                    <TextFieldElement
+                      {...input}
+                      type="number"
+                      label="Spiciness scale"
+                      inputProps={{
+                        step: "1",
+                        min: 1,
+                        max: 10,
+                      }}
+                    />
+                    <br />
+
+                    {meta.error && meta.touched && <span>{meta.error}</span>}
+                  </div>
+                )}
+              </Field>
+            </Condition>
+
+            <Condition when="type" is="sandwich">
+              <Field name="slices_of_bread" validate={required} parse={parse}>
+                {({ input, meta }) => (
+                  <div>
+                    <TextFieldElement
+                      {...input}
+                      type="number"
+                      label="Slices of bread"
+                      inputProps={{
+                        step: "1",
+                        min: 1,
+                        max: 8,
+                      }}
+                    />
+                    <br />
+
+                    {meta.error && meta.touched && <span>{meta.error}</span>}
+                  </div>
+                )}
+              </Field>
+            </Condition>
 
             <Buttons className="buttons">
               <Button
@@ -148,8 +223,6 @@ export default function FormMain() {
                 Reset
               </Button>
             </Buttons>
-
-            <pre>{JSON.stringify(values)}</pre>
           </form>
         )}
       />
