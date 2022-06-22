@@ -1,10 +1,14 @@
-import "./App.css";
+import styled from "@emotion/styled";
 import FormMain from "./components/FormMain";
+
+export const AppDiv = styled.div`
+  text-align: center;
+`;
 
 export default function App() {
   return (
-    <div className="App">
+    <AppDiv>
       <FormMain />
-    </div>
+    </AppDiv>
   );
 }
