@@ -15,13 +15,24 @@ type Validator = (value: string) => string;
 // return value type set to "any" to bypass the type
 // expected by Field's property "parse"
 const parse = (value: string): any =>
+  isNaN(parseInt(value)) ? "" : parseInt(value);
+const parseDiameter = (value: string): any =>
   isNaN(parseFloat(value)) ? "" : parseFloat(value);
 const required = (value: string) =>
   !value || value === "default" ? "Required" : "";
 const timeFormat = (value: string) =>
-  value[2] === ":" && value[5] === ":" && value.length === 8
+  value[2] === ":" &&
+  value[5] === ":" &&
+  value.length === 8 &&
+  value.split(":").every((str) => !isNaN(parseInt(str)))
     ? ""
     : "Incorrect format";
+const pizzaSlices = (value: string) =>
+  parseInt(value) >= 1 && parseInt(value) <= 16 ? "" : "Wrong quantity";
+const pizzaDiameter = (value: string) =>
+  parseFloat(value) >= 15 && parseFloat(value) <= 60 ? "" : "Wrong diameter";
+const soupSandwichNumber = (value: string) =>
+  parseInt(value) >= 1 && parseInt(value) <= 10 ? "" : "Wrong quantity";
 const composeValidators =
   (...validators: Validator[]) =>
   (value: string) =>
@@ -122,13 +133,17 @@ export default function FormMain() {
               </Field>
 
               <FormCondition when="type" is="pizza">
-                <Field name="no_of_slices" validate={required} parse={parse}>
+                <Field
+                  name="no_of_slices"
+                  validate={composeValidators(required, pizzaSlices)}
+                  parse={parse}
+                >
                   {({ input, meta }) => (
                     <div>
                       <TextFieldElement
                         {...input}
                         type="number"
-                        label="Number of slices"
+                        label="Number of slices (1-16)"
                         inputProps={{
                           step: "1",
                           min: 1,
@@ -144,13 +159,17 @@ export default function FormMain() {
                   )}
                 </Field>
 
-                <Field name="diameter" validate={required} parse={parse}>
+                <Field
+                  name="diameter"
+                  validate={composeValidators(required, pizzaDiameter)}
+                  parse={parseDiameter}
+                >
                   {({ input, meta }) => (
                     <div>
                       <TextFieldElement
                         {...input}
                         type="number"
-                        label="Diameter"
+                        label="Diameter (15-60cm)"
                         inputProps={{
                           step: "0.1",
                           min: 15,
@@ -168,13 +187,17 @@ export default function FormMain() {
               </FormCondition>
 
               <FormCondition when="type" is="soup">
-                <Field name="spiciness_scale" validate={required} parse={parse}>
+                <Field
+                  name="spiciness_scale"
+                  validate={composeValidators(required, soupSandwichNumber)}
+                  parse={parse}
+                >
                   {({ input, meta }) => (
                     <div>
                       <TextFieldElement
                         {...input}
                         type="number"
-                        label="Spiciness scale"
+                        label="Spiciness scale (1-10)"
                         inputProps={{
                           step: "1",
                           min: 1,
@@ -192,17 +215,21 @@ export default function FormMain() {
               </FormCondition>
 
               <FormCondition when="type" is="sandwich">
-                <Field name="slices_of_bread" validate={required} parse={parse}>
+                <Field
+                  name="slices_of_bread"
+                  validate={composeValidators(required, soupSandwichNumber)}
+                  parse={parse}
+                >
                   {({ input, meta }) => (
                     <div>
                       <TextFieldElement
                         {...input}
                         type="number"
-                        label="Slices of bread"
+                        label="Slices of bread (1-10)"
                         inputProps={{
                           step: "1",
                           min: 1,
-                          max: 8,
+                          max: 10,
                         }}
                       />
                       <br />
